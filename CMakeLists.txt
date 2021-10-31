@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 project(
     video2pixelart-se #name
-    VERSION 1.0
+    VERSION 1.1
     DESCRIPTION "video2pixelart, rewritten in c++. converts videos to pixelart and displays them on the command line"
     LANGUAGES CXX #c++
 )
