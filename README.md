@@ -2,6 +2,8 @@
 
 Video2Pixelart Sea Edition. video2pixelart, remade in c++
 
+[Original video2pixelart](<https://github.com/rowan-sl/video2pixelart>)
+
 ## Notes
 
 Videos to test with are found in test-videos
