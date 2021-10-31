@@ -15,8 +15,6 @@
 //progress bar
 #include <cpptqdm/tqdm.h>
 
-#define printm(x) cout << x << endl;
-
 using namespace cv;
 using namespace std;
 
@@ -154,7 +152,6 @@ int main(int argc, char *argv[])
             break;
         }
         Mat scaled_img;
-        //resize(image, scaled_img, Size(term_size.ws_col, term_size.ws_row), INTER_LINEAR);
         int max_x = static_cast<int>(term_size.ws_col/2);//because block is now 2 chars wide
         int max_y = term_size.ws_row;
         Size img_size = image.size();
@@ -179,7 +176,6 @@ int main(int argc, char *argv[])
         {
             for (int j = 0; j < scaled_img.cols; j++)
             {
-                // You can now access the pixel value with cv::Vec3b
                 Vec3b pxl = scaled_img.at<cv::Vec3b>(i, j);
                 txt_img += pxl2txt(pxl[2], pxl[1], pxl[0]);
             }
