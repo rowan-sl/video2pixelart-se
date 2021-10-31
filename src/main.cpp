@@ -7,10 +7,13 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <iterator>
+#include <vector>
 //for argument parsing
 #include <boost/program_options.hpp>
 //opencv
 #include <opencv2/opencv.hpp>
+//progress bar
+#include <cpptqdm/tqdm.h>
 
 #define printm(x) cout << x << endl;
 
@@ -44,6 +47,7 @@ int main(int argc, char *argv[])
         ("help", "produce help message")
         ("file,f", po::value<string>(), "video file for input")
         ("cam,c", po::value<int>(), "index of the camera to display from.")
+        ("preprocess,p", po::bool_switch(), "process video before displaying it")
     ;
 
     po::variables_map vm;
@@ -53,6 +57,7 @@ int main(int argc, char *argv[])
     int source_cam;
     string source_file;
     int source_type;//1 for cam, 0 for file
+    bool preprocess = false;
 
     if (vm.count("help"))
     {
@@ -93,6 +98,17 @@ int main(int argc, char *argv[])
             return 1;
         }
     }
+    if (vm["preprocess"].as<bool>()) {
+        //preprocessing
+        preprocess = true;
+    }
+
+    if (preprocess && source_type) {
+        //preprocessing with camera, which cant happen
+        cout << "Cannot use preprocessing when reading from a camera!" << endl;
+        return 1;
+    }
+
 
     struct winsize term_size;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &term_size);
@@ -111,13 +127,24 @@ int main(int argc, char *argv[])
         cout << "unknown input type (this should never happen)" << endl;
         return 42;
     }
+
     chrono::milliseconds frametime = chrono::milliseconds(static_cast<int>(cap.get(CAP_PROP_FPS)));
+    //after all, why not unsigned long long
+    unsigned long long int num_frames = cap.get(CAP_PROP_FRAME_COUNT);
 
     if (!cap.isOpened())
     {
 
         cout << "cannot open camera";
     }
+
+    vector<string> frames;//storing frames for preprocessing
+    tqdm progbar;
+    if (preprocess) {
+        cout << "processing frames..." << endl;
+    }
+
+    int current_frame = 0;
 
     while (true)
     {
@@ -144,7 +171,7 @@ int main(int argc, char *argv[])
         {
             scale = scale_y;
         }
-        resize(image, scaled_img, Size(), scale, scale, INTER_LINEAR);
+        cv::resize(image, scaled_img, Size(), scale, scale, INTER_LINEAR);
 
         string txt_img = "";
 
@@ -158,9 +185,25 @@ int main(int argc, char *argv[])
             }
             txt_img += "\n";
         }
-        cout << "\x1b[2J" << endl; //clear screen
-        cout << txt_img << endl;   //display image
-        this_thread::sleep_for(frametime);
+        if (!preprocess) {
+            cout << "\x1b[2J" << endl; //clear screen
+            cout << txt_img << endl;   //display image
+            this_thread::sleep_for(frametime);
+        } else {
+            progbar.progress(current_frame, num_frames);
+            frames.push_back(txt_img);
+            current_frame += 1;
+        }
+    }
+
+    progbar.finish();
+
+    if (preprocess) {
+        for (string frame: frames) {
+            cout << "\x1b[2J" << endl; //clear screen
+            cout << frame << endl;   //display image
+            this_thread::sleep_for(frametime);
+        }
     }
 
     cout << "\x1b[0m"

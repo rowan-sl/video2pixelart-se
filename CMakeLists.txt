@@ -20,6 +20,8 @@ add_executable(
     src/main.cpp #file
 )
 
+target_include_directories(vtp-se PRIVATE lib/)
+
 find_package(Boost REQUIRED COMPONENTS program_options)
 target_include_directories(vtp-se PUBLIC ${Boost_INCLUDE_DIRS})
 target_link_libraries(vtp-se ${Boost_LIBRARIES})
