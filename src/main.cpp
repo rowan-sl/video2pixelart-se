@@ -15,14 +15,21 @@
 //progress bar
 #include <cpptqdm/tqdm.h>
 
+bool NOCLEAR = false;
+
 using namespace cv;
 using namespace std;
-
-namespace po = boost::program_options;
 
 typedef Point3_<uint8_t> Pixel;
 
 const string block = "██";
+
+struct ARGS {
+    string file_path;
+    int cam_index;
+    bool play_camera; // false = play from file, true = play from camera
+    bool preprocess;
+};
 
 string pxl2txt(int r, int g, int b)
 {
@@ -37,108 +44,101 @@ string pxl2txt(int r, int g, int b)
     return sequence;
 }
 
+void parse_args(int argc, char *argv[], ARGS &args) {
+    try {
+        namespace po = boost::program_options;
+        //cli argument parsing
+        po::options_description desc("Video2pixelart sea edition.\nConvert videos to pixelart and display them on the command line");
+        desc.add_options()
+            ("help", "produce help message")
+            ("file,f", po::value<string>(), "video file for input")
+            ("cam,c", po::value<int>(), "index of the camera to display from.")
+            ("preprocess,p", po::bool_switch(), "process video before displaying it")
+        ;
+
+        po::variables_map vm;
+        po::store(po::parse_command_line(argc, argv, desc), vm);
+        po::notify(vm);
+
+        if (vm.contains("help"))
+        {
+            cout << desc << endl;
+            exit(0);
+            return;
+        }
+        if (!vm.contains("file") && !vm.contains("cam"))
+        {
+            //neither camera or file source specified
+            cout << "must specify a input!\nuse --help for help" << endl;
+            exit(1);
+            return;
+        }
+        if (vm.contains("file") && vm.contains("cam"))
+        {
+            //bolth camera and file source specified
+            cout << "you can only specify one source! (file/camera)" << endl;
+            exit(1);
+            return;
+        }
+        if (vm.contains("file"))
+        {
+            //file was specified
+            args.file_path = vm["file"].as<string>();
+            args.play_camera = false;
+        }
+        if (vm.contains("cam")) {
+            //cam was specified
+            args.cam_index = vm["cam"].as<int>();
+            args.play_camera = true;
+        }
+
+        args.preprocess = vm["preprocess"].as<bool>();
+
+        if (args.preprocess && args.play_camera) {
+            //preprocessing with camera, which cant happen
+            cout << "Cannot use preprocessing when reading from a camera!" << endl;
+            exit(1);
+        }
+    } catch (boost::wrapexcept<boost::program_options::invalid_option_value> e) {
+        clog << "error while parsing arguments:" << endl;
+        clog << e.what() << endl;
+        exit(1);
+    }
+}
+
 int main(int argc, char *argv[])
 {
-    //cli argument parsing
-    po::options_description desc("Video2pixelart sea edition.\nConvert videos to pixelart and display them on the command line");
-    desc.add_options()
-        ("help", "produce help message")
-        ("file,f", po::value<string>(), "video file for input")
-        ("cam,c", po::value<int>(), "index of the camera to display from.")
-        ("preprocess,p", po::bool_switch(), "process video before displaying it")
-    ;
-
-    po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, desc), vm);
-    po::notify(vm);
-
-    int source_cam;
-    string source_file;
-    int source_type;//1 for cam, 0 for file
-    bool preprocess = false;
-
-    if (vm.count("help"))
-    {
-        cout << desc << endl;
-        return 0;
-    }
-    if (!vm.count("file") && !vm.count("cam"))
-    {
-        //neither camera or file source specified
-        cout << "must specify a input!\nuse --help for help" << endl;
-        return 1;
-    }
-    if (vm.count("file") && vm.count("cam"))
-    {
-        //bolth camera and file source specified
-        cout << "you can only specify one source! (file/camera)" << endl;
-        return 1;
-    }
-    if (vm.count("file"))
-    {
-        //file was specified
-        try {
-            source_file = vm["file"].as<string>();
-            source_type = 0;
-        } catch(boost::bad_any_cast) {
-            cout << "Bad file argument!" << endl;
-            return 1;
-        }
-        source_type = 0;
-    }
-    if (vm.count("cam")) {
-        //cam was specified
-        try {
-            source_cam = vm["cam"].as<int>();
-            source_type = 1;
-        } catch(boost::bad_any_cast) {
-            cout << "Bad file argument!" << endl;
-            return 1;
-        }
-    }
-    if (vm["preprocess"].as<bool>()) {
-        //preprocessing
-        preprocess = true;
-    }
-
-    if (preprocess && source_type) {
-        //preprocessing with camera, which cant happen
-        cout << "Cannot use preprocessing when reading from a camera!" << endl;
-        return 1;
-    }
-
+    ARGS args;
+    parse_args(argc, argv, args);
 
     struct winsize term_size;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &term_size);
     //cout << term_size.ws_col << "," << term_size.ws_row << endl;
 
     Mat image;
-
+    cout << "opening file/camera" << endl;
     VideoCapture cap;
-    if (source_type == 1) {
+    if (args.play_camera) {
         //camera
-        cap = VideoCapture(source_cam);
-    } else if (source_type == 0) {
-        //file
-        cap = VideoCapture(source_file);
+        cap = VideoCapture(args.cam_index);
     } else {
-        cout << "unknown input type (this should never happen)" << endl;
-        return 42;
+        //file
+        cap = VideoCapture(args.file_path);
     }
 
     chrono::milliseconds frametime = chrono::milliseconds(static_cast<int>(cap.get(CAP_PROP_FPS)));
     //after all, why not unsigned long long
     unsigned long long int num_frames = cap.get(CAP_PROP_FRAME_COUNT);
-
     if (!cap.isOpened())
     {
-
-        cout << "cannot open camera";
+        cout << "cannot open file/camera!" << endl;
+        cout << "are you shure that you entered it correctly?" << endl;
+        exit(1);
     }
 
     vector<string> frames;//storing frames for preprocessing
     tqdm progbar;
-    if (preprocess) {
+    if (args.preprocess) {
         cout << "processing frames..." << endl;
     }
 
@@ -181,8 +181,8 @@ int main(int argc, char *argv[])
             }
             txt_img += "\n";
         }
-        if (!preprocess) {
-            cout << "\x1b[2J" << endl; //clear screen
+        if (!args.preprocess) {
+            if (!NOCLEAR) {cout << "\x1b[2J" << endl;} //clear screen
             cout << txt_img << endl;   //display image
             this_thread::sleep_for(frametime);
         } else {
@@ -194,16 +194,18 @@ int main(int argc, char *argv[])
 
     progbar.finish();
 
-    if (preprocess) {
+    if (args.preprocess) {
         for (string frame: frames) {
-            cout << "\x1b[2J" << endl; //clear screen
+            if (!NOCLEAR) {cout << "\x1b[2J" << endl;} //clear screen
             cout << frame << endl;   //display image
             this_thread::sleep_for(frametime);
         }
     }
 
-    cout << "\x1b[0m"
-         << "\x1b[2J" << endl; //reset the graphics mode of the terminal
+    if (!NOCLEAR) {
+        cout << "\x1b[0m" << "\x1b[2J" << endl; //reset the graphics mode of the terminal
+    }
+
     cap.release();
     return 0;
 }
