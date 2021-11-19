@@ -20,8 +20,11 @@ include(CPack)
 
 add_executable(
     vtp-se #name
-    src/main.cpp #file
+    src/main.c++ #file
 )
+
+#headers
+target_include_directories(vtp-se PRIVATE src/include/)
 
 target_include_directories(vtp-se PRIVATE lib/)
 
