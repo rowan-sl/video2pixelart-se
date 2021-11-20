@@ -30,11 +30,16 @@ void parse_args(int argc, char *argv[], ARGS &args)
         ("cam,c", po::value<int>(), "index of the camera to display from.")
         ("preprocess,p", po::bool_switch(), "process video before displaying it")
         ("nodisplay,n", po::bool_switch(), "do not display the processed video. usefull for speed benchmarks")
+        ("do-it-now", po::bool_switch(), "do it. i dont care what happens, JUST DO IT!!!")
         ;
 
         po::variables_map vm;
         po::store(po::parse_command_line(argc, argv, desc), vm);
         po::notify(vm);
+
+        if (vm.contains("do-it-now")) {
+            args.JUST_DO_IT = true;
+        }
 
         if (vm.contains("help"))
         {
@@ -80,16 +85,24 @@ void parse_args(int argc, char *argv[], ARGS &args)
             std::exit(1);
         }
         if (args.nodisplay && args.play_camera) {
-            std::cout << "what are you even trying to do....?" << endl;
-            std::cout << "there is literaly no point in this..." << endl;
-            std::cout << "...use --do-it-now to override this" << endl;
-            std::exit(1);
+            if (args.JUST_DO_IT) {
+                std::cout << "i guess if you realy want to..." << endl;
+            } else {
+                std::cout << "what are you even trying to do....?" << endl;
+                std::cout << "there is literaly no point in this..." << endl;
+                std::cout << "...use --do-it-now to override this" << endl;
+                std::exit(1);
+            }
         }
         if (!args.preprocess && args.nodisplay) {
+            if (args.JUST_DO_IT) {
+                std::cout << "i guess if you realy want to..." << endl;
+            } else {
             std::cout << "srsly?" << endl;
             std::cout << "there is literaly no point in this..." << endl;
             std::cout << "...use --do-it-now to override this" << endl;
             std::exit(-1);
+            }
         }
     } catch (boost::wrapexcept<boost::program_options::invalid_option_value> e) {
         handle_args_error<boost::wrapexcept<boost::program_options::invalid_option_value>>(e);

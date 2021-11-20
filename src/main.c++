@@ -50,15 +50,16 @@ void preprocess_main(VideoCapture cap, struct winsize term_size, ARGS args, chro
     }
 
     progbar.finish();
-
-    for (string frame : frames)
-    {
-        if (!NOCLEAR)
+    if (!args.nodisplay) {
+        for (string frame : frames)
         {
-            std::cout << "\x1b[2J" << endl;
-        }                      //clear screen
-        std::cout << frame << endl; //display image
-        this_thread::sleep_for(frametime);
+                if (!NOCLEAR)
+                {
+                    std::cout << "\x1b[2J" << endl;
+                }                      //clear screen
+                std::cout << frame << endl; //display image
+            this_thread::sleep_for(frametime);
+        }
     }
 }
 
@@ -78,12 +79,14 @@ void normal_main(VideoCapture cap, struct winsize term_size, ARGS args, chrono::
 
         string txt_img = convert_frame(scaled_img);
 
-        if (!NOCLEAR)
-        {
-            std::cout << "\x1b[2J" << endl;
-        }                        //clear screen
-        std::cout << txt_img << endl; //display image
-        this_thread::sleep_for(frametime);
+        if (!args.nodisplay) {
+            if (!NOCLEAR)
+            {
+                std::cout << "\x1b[2J" << endl;
+            }                        //clear screen
+            std::cout << txt_img << endl; //display image
+            this_thread::sleep_for(frametime);
+        }
     }
 }
 
@@ -125,8 +128,10 @@ int main(int argc, char *argv[])
 
     if (!NOCLEAR)
     {
-        std::cout << "\x1b[0m"
-             << "\x1b[2J" << endl; //reset the graphics mode of the terminal
+        if (!args.nodisplay) {
+            std::cout << "\x1b[0m";
+            std::cout << "\x1b[2J" << endl; //reset the graphics mode of the terminal
+        }
     }
 
     cap.release();
