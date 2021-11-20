@@ -21,10 +21,8 @@ include(CPack)
 add_executable(
     vtp-se #name
     src/main.c++ #file
+    # src/conversion.c++#lib file
 )
-
-#headers
-target_include_directories(vtp-se PRIVATE src/include/)
 
 target_include_directories(vtp-se PRIVATE lib/)
 
