@@ -90,6 +90,16 @@ void normal_main(VideoCapture cap, struct winsize term_size, ARGS args, chrono::
     }
 }
 
+void image_main(Mat image, struct winsize term_size, ARGS args) {
+    Mat scaled_img = resize_image_to_term(image, term_size);
+
+    string txt_img = convert_frame(scaled_img);
+
+    if (!args.nodisplay) {
+        std::cout << txt_img << endl; //display image
+    }
+}
+
 int main(int argc, char *argv[])
 {
     ARGS args;
@@ -98,42 +108,49 @@ int main(int argc, char *argv[])
     struct winsize term_size;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &term_size);
 
-    Mat image;
     std::cout << "opening file/camera" << endl;
-    VideoCapture cap;
-    if (args.play_camera)
-    {
-        //camera
-        cap = VideoCapture(args.cam_index);
-    }
-    else
-    {
-        //file
-        cap = VideoCapture(args.file_path);
-    }
-    if (!cap.isOpened())
-    {
-        std::cout << "cannot open file/camera!" << endl;
-        std::cout << "are you shure that you entered it correctly?" << endl;
-        std::exit(1);
-    }
+    if (!args.image) {
+        VideoCapture cap;
+        if (args.play_camera)
+        {
+            //camera
+            cap = VideoCapture(args.cam_index);
+        }
+        else
+        {
+            //file
+            cap = VideoCapture(args.file_path);
+        }
+        if (!cap.isOpened())
+        {
+            std::cout << "cannot open file/camera!" << endl;
+            std::cout << "are you shure that you entered it correctly?" << endl;
+            std::exit(1);
+        }
 
-    chrono::milliseconds frametime = chrono::milliseconds(static_cast<int>(cap.get(CAP_PROP_FPS)));
+        chrono::milliseconds frametime = chrono::milliseconds(static_cast<int>(cap.get(CAP_PROP_FPS)));
+        
+        if (args.preprocess) {
+            preprocess_main(cap, term_size, args, frametime);
+        } else {
+            normal_main(cap, term_size, args, frametime);
+        }
 
-    if (args.preprocess) {
-        preprocess_main(cap, term_size, args, frametime);
+        cap.release();
     } else {
-        normal_main(cap, term_size, args, frametime);
+        //image
+        Mat img = imread(args.file_path);
+        image_main(img, term_size, args);
     }
+
 
     if (!NOCLEAR)
     {
-        if (!args.nodisplay) {
+        if (!args.nodisplay && !args.image) {
             std::cout << "\x1b[0m";
             std::cout << "\x1b[2J" << endl; //reset the graphics mode of the terminal
         }
     }
 
-    cap.release();
     return 0;
 }

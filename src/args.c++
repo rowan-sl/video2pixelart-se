@@ -6,6 +6,7 @@ struct ARGS
     bool play_camera; // false = play from file, true = play from camera
     bool preprocess;
     bool nodisplay;
+    bool image;//just do one image, not a video
     bool JUST_DO_IT; // screw the consiquences. disables stuff
 };
 
@@ -28,6 +29,7 @@ void parse_args(int argc, char *argv[], ARGS &args)
         ("help,h", "produce help message")
         ("file,f", po::value<string>(), "video file for input")
         ("cam,c", po::value<int>(), "index of the camera to display from.")
+        ("img,i", po::value<string>(), "pixelart a image, not a whole video")
         ("preprocess,p", po::bool_switch(), "process video before displaying it")
         ("nodisplay,n", po::bool_switch(), "do not display the processed video. usefull for speed benchmarks")
         ("do-it-now", po::bool_switch(), "do it. i dont care what happens, JUST DO IT!!!")
@@ -47,17 +49,20 @@ void parse_args(int argc, char *argv[], ARGS &args)
             std::exit(0);
             return;
         }
-        if (!vm.contains("file") && !vm.contains("cam"))
+        bool dofile = vm.contains("file");
+        bool docam = vm.contains("cam");
+        bool doimg = vm.contains("img");
+        if (!dofile && !docam && !doimg)
         {
             //neither camera or file source specified
             std::cout << "must specify a input!\nuse --help for help" << endl;
             std::exit(1);
             return;
         }
-        if (vm.contains("file") && vm.contains("cam"))
+        if (dofile && docam || dofile && doimg || docam && doimg)
         {
-            //bolth camera and file source specified
-            std::cout << "you can only specify one source! (file/camera)" << endl;
+            //more than 1 source
+            std::cout << "you can only specify one source! (file/camera/image)" << endl;
             std::exit(1);
             return;
         }
@@ -65,6 +70,13 @@ void parse_args(int argc, char *argv[], ARGS &args)
         {
             //file was specified
             args.file_path = vm["file"].as<string>();
+            args.play_camera = false;
+        }
+        if (vm.contains("img"))
+        {
+            //img was specified
+            args.file_path = vm["img"].as<string>();
+            args.image = true;
             args.play_camera = false;
         }
         if (vm.contains("cam"))
